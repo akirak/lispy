@@ -1946,6 +1946,9 @@ When ARG is nagative, add them above instead"
 (defvar-local lispy-outline-header ";;"
   "Store the buffer-local outline start.")
 
+(defvar-local lispy-outline-character ?\;
+  "Character used to indicate the level of an outline heading.")
+
 (defun lispy-meta-return ()
   "Insert a new heading."
   (interactive)
@@ -1970,7 +1973,7 @@ When ARG is nagative, add them above instead"
              (backward-char 1)))))
   (insert lispy-outline-header
           (make-string (max (lispy-outline-level) 1)
-                       ?\*)
+                       lispy-outline-character)
           " ")
   (beginning-of-line))
 
@@ -4684,7 +4687,9 @@ Sexp is obtained by exiting the list ARG times."
     (save-match-data
       (end-of-line)
       (if (re-search-backward lispy-outline nil t)
-          (max (cl-count ?* (match-string 0)) 1)
+          (max (cl-count lispy-outline-character
+                         (string-remove-prefix lispy-outline-header
+                                               (match-string 0))) 1)
         0))))
 
 (defun lispy-outline-next (arg)
@@ -4716,8 +4721,8 @@ Sexp is obtained by exiting the list ARG times."
   (save-excursion
     (beginning-of-line)
     (when (looking-at lispy-outline)
-      (goto-char (match-end 0))
-      (insert "*"))))
+      (goto-char (match-beginning 0))
+      (insert (char-to-string lispy-outline-character)))))
 
 (defun lispy-outline-demote ()
   "Demote current outline level by one."
