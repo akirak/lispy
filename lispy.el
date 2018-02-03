@@ -4706,8 +4706,8 @@ Sexp is obtained by exiting the list ARG times."
   (save-excursion
     (beginning-of-line)
     (when (looking-at lispy-outline)
-      (goto-char (match-end 0))
-      (insert "*"))))
+      (goto-char (match-beginning 0))
+      (insert ";"))))
 
 (defun lispy-outline-demote ()
   "Demote current outline level by one."
