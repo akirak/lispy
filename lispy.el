@@ -1974,8 +1974,7 @@ When ARG is nagative, add them above instead"
   (insert lispy-outline-header
           (make-string (max (lispy-outline-level) 1)
                        lispy-outline-character)
-          " ")
-  (beginning-of-line))
+          " "))
 
 (defun lispy-alt-line (&optional N)
   "Do a context-aware exit, then `newline-and-indent', N times.
