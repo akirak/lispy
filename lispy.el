@@ -4720,7 +4720,7 @@ Sexp is obtained by exiting the list ARG times."
   (save-excursion
     (beginning-of-line)
     (when (looking-at lispy-outline)
-      (goto-char (match-beginning 0))
+      (goto-char (match-end 0))
       (insert (char-to-string lispy-outline-character)))))
 
 (defun lispy-outline-demote ()
