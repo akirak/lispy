@@ -24,21 +24,27 @@
 
 ;;; Code:
 
-(if (version< emacs-version "24.4")
+(if (version< emacs-version "26.1")
     (progn
-      (defsubst string-trim-left (string)
-        "Remove leading whitespace from STRING."
-        (if (string-match "\\`[ \t\n\r]+" string)
+      (defsubst string-trim-left (string &optional regexp)
+        "Trim STRING of leading string matching REGEXP.
+
+REGEXP defaults to \"[ \\t\\n\\r]+\"."
+        (if (string-match (concat "\\`\\(?:" (or regexp "[ \t\n\r]+") "\\)") string)
             (replace-match "" t t string)
           string))
-      (defsubst string-trim-right (string)
-        "Remove trailing whitespace from STRING."
-        (if (string-match "[ \t\n\r]+\\'" string)
+      (defsubst string-trim-right (string &optional regexp)
+        "Trim STRING of trailing string matching REGEXP.
+
+REGEXP defaults to  \"[ \\t\\n\\r]+\"."
+        (if (string-match (concat "\\(?:" (or regexp "[ \t\n\r]+") "\\)\\'") string)
             (replace-match "" t t string)
           string))
-      (defsubst string-trim (string)
-        "Remove leading and trailing whitespace from STRING."
-        (string-trim-left (string-trim-right string))))
+      (defsubst string-trim (string &optional trim-left trim-right)
+        "Trim STRING of leading and trailing strings matching TRIM-LEFT and TRIM-RIGHT.
+
+TRIM-LEFT and TRIM-RIGHT default to \"[ \\t\\n\\r]+\"."
+        (string-trim-left (string-trim-right string trim-right) trim-left)))
   (require 'subr-x))
 
 (defgroup lispy-faces nil
@@ -124,6 +130,8 @@ The caller of `lispy--show' might use a substitute e.g. `describe-function'."
 (declare-function lispy--lisp-describe "le-lisp")
 (declare-function lispy--back-to-paren "lispy")
 (declare-function lispy--current-function "lispy")
+(declare-function lispy--in-comment-p "lispy")
+(declare-function lispy--bounds-string "lispy")
 
 ;; ——— Commands ————————————————————————————————————————————————————————————————
 (defun lispy--back-to-python-function ()
@@ -265,6 +273,7 @@ The caller of `lispy--show' might use a substitute e.g. `describe-function'."
      (require 'le-lisp)
      (lispy--lisp-describe sym))
     ((eq major-mode 'python-mode)
+     (require 'semantic)
      (semantic-mode 1)
      (let ((sym (semantic-ctxt-current-symbol)))
        (if sym

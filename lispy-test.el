@@ -725,7 +725,7 @@ Insert KEY if there's no command."
       (should (string= (lispy-with "(a\n;; foo~bar\nb)|" "\C-d")
                        "(a\n;; foo~\n)|"))))
 
-  (let ((lispy-delete-atom-from-within t))
+  (let ((lispy-delete-sexp-from-within t))
     (should (string= (lispy-with "(|)" "\C-d") "|"))
     (should (string= (lispy-with "(foo|)" "\C-d") "|"))
     (should (string= (lispy-with "\"|\"" "\C-d") "|"))
@@ -811,7 +811,7 @@ Insert KEY if there's no command."
                    "|"))
   (should (string= (lispy-with-clojure "(partial filter neg?)|" "\C-?")
                    "|"))
-  (let ((lispy-delete-atom-from-within t))
+  (let ((lispy-delete-sexp-from-within t))
     (should (string= (lispy-with "(|)" "\C-?") "|"))
     (should (string= (lispy-with "(|foo)" "\C-?") "|"))
     (should (string= (lispy-with "\"|\"" "\C-?") "|"))
@@ -1624,6 +1624,21 @@ Insert KEY if there's no command."
   (should (string= (lispy-with "(list ~one|\n      two\n      five)" "SjSjS")
                    "(list \"one\"\n      \"two\"\n      ~\"five\"|)")))
 
+(ert-deftest lispy-teleport ()
+  ;; should be able to cancel
+  (should (string= (lispy-with "(a |(b))"
+                               (execute-kbd-macro (kbd "t ESC")))
+                   "(a |(b))"))
+  (should (string= (lispy-with "(a (b)|)"
+                               (execute-kbd-macro (kbd "t ESC")))
+                   "(a (b)|)"))
+  (should (string= (lispy-with "((a) ~b|)"
+                               (execute-kbd-macro (kbd "t ESC")))
+                   "((a) ~b|)"))
+  (should (string= (lispy-with "((a) |b~)"
+                               (execute-kbd-macro (kbd "t ESC")))
+                   "((a) |b~)")))
+
 (ert-deftest lispy-eval ()
   (should (string= (lispy-with-value "(+ 2 2)|" (lispy-eval 1)) "4"))
   ;; (should (string= (lispy-with "|(+ 2 2)" "2e") "|(+ 2 2)\n;; => 4"))
@@ -1855,6 +1870,11 @@ Insert KEY if there's no command."
                    "(| '(foo bar))"))
   (should (string= (lispy-with "\"a regex \\\\|\"" "(")
                    "\"a regex \\\\(|\\\\)\""))
+  (let (lispy-parens-only-left-in-string-or-comment)
+    (should (string= (lispy-with "\"|\"" "(")
+                     "\"(|)\""))
+    (should (string= (lispy-with ";; |" "(")
+                     ";; (|)")))
   (should (string= (lispy-with "~(foo) (bar)|" "(")
                    "(| (foo) (bar))"))
   (should (string= (lispy-with "~foo (bar)|" "(")
@@ -1885,7 +1905,7 @@ Insert KEY if there's no command."
   (should (string= (lispy-with "\"a string |" "{")
                    "\"a string {|}"))
   ;; test space-unless behavior
-  (should (string= (lispy-with "`|" "{")
+  (should (string= (lispy-with-clojure "`|" "{")
                    "`{|}"))
   (should (string= (lispy-with-clojure "^|" "{")
                    "^{|}"))
@@ -1900,7 +1920,7 @@ Insert KEY if there's no command."
   (should (string= (lispy-with "\"a string |" "}")
                    "\"a string [|]"))
   ;; test space-unless behavior
-  (should (string= (lispy-with "`|" "}")
+  (should (string= (lispy-with-clojure "`|" "}")
                    "`[|]"))
   (should (string= (lispy-with-clojure "#my.klass_or_type_or_record|" "}")
                    "#my.klass_or_type_or_record[|]")))
@@ -2006,6 +2026,8 @@ Insert KEY if there's no command."
                    "|(eq (char-before) ?\\()"))
   (should (string= (lispy-with "`|[1  2  3]" "i")
                    "`|[1 2 3]"))
+  (should (string= (lispy-with "   |(defun)" "i")
+                   "|(defun)"))
   (should (string= (lispy-with "|;; comment 1\n;; comment 2" "i")
                    "|;; comment 1\n;; comment 2"))
   (should (string= (lispy-with "|(list \"\\\"\")" "i")
@@ -2018,6 +2040,8 @@ Insert KEY if there's no command."
                    "|(. object method)"))
   (should (string= (lispy-with-clojure "|(range 1e9)" "i")
                    "|(range 1e9)"))
+  (should (equal (lispy-with "|(pcase :bar\n    (`,pat pat))" "i")
+                 "|(pcase :bar\n  (`,pat pat))"))
   (let ((clojure-align-forms-automatically nil))
     (should (string= (lispy-with-clojure "|{\\a   \\b}" "i")
                      "|{\\a \\b}"))
@@ -2234,6 +2258,8 @@ Insert KEY if there's no command."
 (ert-deftest lispy-space ()
   (should (string= (lispy-with "(|foo" " ")
                    "(| foo"))
+  (should (string= (lispy-with "(| foo)" " ")
+                   "(|foo)"))
   (should (string= (lispy-with "|(foo bar)" "2 ")
                    "(| foo bar)"))
   (should (string= (lispy-with "(foo bar)|" "2 ")
@@ -2418,7 +2444,11 @@ Insert KEY if there's no command."
                    "(progn (setq type 'norwegian-blue)\n       (setq |plumage~-type 'lovely))"))
   (should (string= (lispy-with "|(progn (setq type 'norwegian-blue)\n       (setq plumage-type 'lovely))"
                                (execute-kbd-macro (kbd "-e")))
-                   "(progn (setq type 'norwegian-|blue~)\n       (setq plumage-type 'lovely))")))
+                   "(progn (setq type 'norwegian-|blue~)\n       (setq plumage-type 'lovely))"))
+  ;; should be able to cancel
+  (should (string= (lispy-with "|(a b c)"
+                               (execute-kbd-macro (kbd "- ESC")))
+                   "|(a b c)")))
 
 (ert-deftest lispy-ace-symbol-replace ()
   (should (string= (lispy-with "|(progn (setq type 'norwegian-blue)\n       (setq plumage-type 'lovely))"
@@ -2442,6 +2472,8 @@ Insert KEY if there's no command."
                    "(|)"))
   (should (string= (lispy-with "a (|) b" "(")
                    "a ((|)) b"))
+  (should (string= (lispy-with "`(,|)" "(")
+                   "`(,(|))"))
   (should (string= (lispy-with "(a |) b" "(")
                    "(a (|)) b"))
   (should (string= (lispy-with "a|" "(")
@@ -3062,10 +3094,10 @@ Insert KEY if there's no command."
                   (lispy-eval-python-str))
                  "if cond2:\n     expr1\n     if cond3:\n         expr2\n     else:\n         expr3\n else:\n     expr4"))
   (should (equal (lispy-with-python
-                  "|x = 42 # comment\n# comment\ny = 43"
+                  "|@up_down\ndef greet(name):\n    return \"my oh my, {}\".format(name)\n\ndef other():\n    pass"
                   (let ((forward-sexp-function nil))
                     (lispy-eval-python-str)))
-                 "x = 42 # comment"))
+                 "@up_down\ndef greet(name):\n    return \"my oh my, {}\".format(name)"))
   (should (equal (lispy-with-python
                   "|scores = np.array([[1, 2, 3, 6],\n                   [2, 4, 5, 6],\n                   [3, 8, 7, 6]])"
                   (let ((forward-sexp-function nil))
