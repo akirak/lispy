@@ -1959,11 +1959,14 @@ When ARG is nagative, add them above instead"
                  (newline))
              (newline)
              (backward-char 1)))))
-  (insert lispy-outline-header
-          (make-string (max (lispy-outline-level) 1)
-                       ?\*)
-          " ")
-  (beginning-of-line))
+  (if outline-minor-mode
+      (outline-insert-heading)
+    (progn
+      (insert lispy-outline-header
+              (make-string (max (lispy-outline-level) 1)
+                           ?\*)
+              " ")
+      (beginning-of-line))))
 
 (defun lispy-alt-line (&optional N)
   "Do a context-aware exit, then `newline-and-indent', N times.
@@ -4707,8 +4710,8 @@ Sexp is obtained by exiting the list ARG times."
   (save-excursion
     (beginning-of-line)
     (when (looking-at lispy-outline)
-      (goto-char (match-end 0))
-      (insert "*"))))
+      (goto-char (match-beginning 0))
+      (insert ";"))))
 
 (defun lispy-outline-demote ()
   "Demote current outline level by one."
